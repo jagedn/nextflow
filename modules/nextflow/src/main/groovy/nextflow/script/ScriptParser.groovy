@@ -124,7 +124,7 @@ class ScriptParser {
         config.addCompilationCustomizers( new ASTTransformationCustomizer(NextflowDSL))
         config.addCompilationCustomizers( new ASTTransformationCustomizer(NextflowXform))
         config.addCompilationCustomizers( new ASTTransformationCustomizer(OpXform))
-
+        config.debug = true
         if( session && session.classesDir )
             config.setTargetDirectory(session.classesDir.toFile())
 
@@ -163,10 +163,10 @@ class ScriptParser {
         return new GroovyShell(classLoader, binding, getConfig())
     }
 
-    ScriptParser parse(String scriptText, GroovyShell interpreter) {
-        final String clazzName = computeClassName(scriptText)
+    ScriptParser parse(def scriptText, GroovyShell interpreter) {
+        final String clazzName = script instanceof CharSequence ? computeClassName(scriptText) : scriptText.toString()
         try {
-            final parsed = interpreter.parse(scriptText, clazzName)
+            final parsed = parse0(scriptText, interpreter)
             if( parsed !instanceof BaseScript ){
                throw new CompilationFailedException(0, null)
             }
@@ -191,6 +191,16 @@ class ScriptParser {
         }
     }
 
+    def parse0(def script, GroovyShell interpreter) {
+        if( script instanceof Path )
+            return interpreter.parse(script.toUri())
+
+        if( script instanceof CharSequence )
+            return interpreter.parse("$script", computeClassName(script))
+
+        throw new IllegalArgumentException("Unknown script type: ${script?.getClass()?.getName()}")
+    }
+
 
     ScriptParser parse(String scriptText) {
         def interpreter = getInterpreter()
@@ -200,7 +210,8 @@ class ScriptParser {
     ScriptParser parse(Path scriptPath) {
         this.scriptPath = scriptPath
         try {
-            parse(scriptPath.text)
+            def interpreter = getInterpreter()
+            parse(scriptPath, interpreter)
         }
         catch (IOException e) {
             throw new ScriptCompilationException("Unable to read script: '$scriptPath' -- cause: $e.message", e)
