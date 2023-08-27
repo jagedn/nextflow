@@ -164,7 +164,7 @@ class ScriptParser {
     }
 
     ScriptParser parse(def scriptText, GroovyShell interpreter) {
-        final String clazzName = script instanceof CharSequence ? computeClassName(scriptText) : scriptText.toString()
+        final String clazzName = computeClassName(scriptText)
         try {
             final parsed = parse0(scriptText, interpreter)
             if( parsed !instanceof BaseScript ){
